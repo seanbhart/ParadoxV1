@@ -88,9 +88,23 @@ describe("DOXv1 contract", function () {
   // });
 
   describe("Swap", async function () {
-    for (let i = 0; i < 5; i++) {
+    var token1bal = 1000000;
+    var token2bal = 1000000;
+    let k = token1bal * token2bal;
+
+    var bal1last = 1000000;
+    var bal2last = 0;
+    let swapAmt = 100000;
+
+    for (let i = 0; i < 7; i++) {
       it("Should have swapped token1 for token2", async function () {
-        await dox.swap(owner.address, token1.address, token2.address, 100000);
+        await dox.swap(owner.address, token1.address, token2.address, swapAmt);
+
+        token1bal = token1bal + swapAmt;
+        let token2baldiff = token2bal - k / token1bal;
+        token2bal = k / token1bal;
+        console.log("token calcs: ", token1bal, token2bal, token2baldiff);
+
         const bal1 = await dox.getBook(owner.address, token1.address);
         const bal2 = await dox.getBook(owner.address, token2.address);
         console.log(
@@ -98,8 +112,12 @@ describe("DOXv1 contract", function () {
           BigNumber.from(bal1).toString(),
           BigNumber.from(bal2).toString()
         );
-        expect(bal1).to.equal(900000 - 10000 * i);
-        expect(bal2).to.equal(10);
+
+        console.log("last balances: ", bal1last, bal2last);
+        bal1last = bal1last - swapAmt;
+        expect(Math.ceil(bal1)).to.equal(Math.ceil(bal1last));
+        bal2last = bal2last + token2baldiff;
+        expect(Math.ceil(bal2)).to.equal(Math.ceil(bal2last));
       });
     }
   });
