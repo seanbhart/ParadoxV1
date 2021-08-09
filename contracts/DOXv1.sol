@@ -121,15 +121,15 @@ contract DOXv1 is Ownable {
         uint y = tokenHaveFirst ? swapCPI.y : swapCPI.x;
         // y - (k / (x + _give));
         output = y.sub(swapCPI.k.div(x.add(_give)));
-        console.log("swap output: ", output);
+        // console.log("swap output: ", output);
 
         // Update the stored CPI
         swapCPI.x = x.add(_give);
         swapCPI.y = y.sub(output);
-        console.log("swapCPI: ", swapCPI.x, swapCPI.y, swapCPI.k);
-        console.log("old y price (in x thousandths): ", x.mul(1000).div(y));
-        console.log("y price (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y));
-        console.log("y price slippage (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y) - x.mul(1000).div(y));
+        // console.log("swapCPI: ", swapCPI.x, swapCPI.y, swapCPI.k);
+        // console.log("old y price (in x thousandths): ", x.mul(1000).div(y));
+        // console.log("y price (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y));
+        // console.log("y price slippage (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y) - x.mul(1000).div(y));
         _safeSaveCPI(_tokenHave, _tokenWant, swapCPI);
 
         // Adjust the account's balances

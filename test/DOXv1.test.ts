@@ -100,10 +100,23 @@ describe("DOXv1 contract", function () {
       it("Should have swapped token1 for token2", async function () {
         await dox.swap(owner.address, token1.address, token2.address, swapAmt);
 
+        let token2LastPx = token2bal / token1bal;
         token1bal = token1bal + swapAmt;
         let token2baldiff = token2bal - k / token1bal;
         token2bal = k / token1bal;
-        console.log("token calcs: ", token1bal, token2bal, token2baldiff);
+        console.log(
+          "token calcs: ",
+          token1bal.toFixed(2),
+          token2bal.toFixed(2),
+          token2baldiff.toFixed(2)
+        );
+        let token2Px = token2bal / token1bal;
+        console.log(
+          "token2 px last, current, slippage: ",
+          token2LastPx.toFixed(2),
+          token2Px.toFixed(2),
+          ((token2Px - token2LastPx) / token2LastPx).toFixed(2) + "%"
+        );
 
         const bal1 = await dox.getBook(owner.address, token1.address);
         const bal2 = await dox.getBook(owner.address, token2.address);
@@ -113,7 +126,11 @@ describe("DOXv1 contract", function () {
           BigNumber.from(bal2).toString()
         );
 
-        console.log("last balances: ", bal1last, bal2last);
+        console.log(
+          "last balances: ",
+          bal1last.toFixed(2),
+          bal2last.toFixed(2)
+        );
         bal1last = bal1last - swapAmt;
         expect(Math.ceil(bal1)).to.equal(Math.ceil(bal1last));
         bal2last = bal2last + token2baldiff;
