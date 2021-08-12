@@ -11,7 +11,6 @@ import { Address } from "cluster";
 import { BigNumber, Bytes } from "ethers";
 import { ethers } from "hardhat";
 
-import DOXERC20Factory from "../artifacts/contracts/DOXERC20Factory.sol/DOXERC20Factory.json";
 import DOXERC20 from "../artifacts/contracts/DOXERC20.sol/DOXERC20.json";
 
 describe("ParadoxV1 contract", function () {
@@ -32,22 +31,15 @@ describe("ParadoxV1 contract", function () {
   let token2Address: string;
   let token3Address: string;
 
-  var account2 = ethers.Wallet.createRandom();
-
   before(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     // console.log("Created signers. Owner:", owner.address);
 
     // Deploy the test ERC20 token
     tokenFactoryFactory = await ethers.getContractFactory("DOXERC20Factory");
-    tokenFactory = await tokenFactoryFactory.deploy(owner.address);
-    // console.log("tokenFactory: ", tokenFactory.address);
-    // const tFactory = new ethers.Contract(
-    //   tokenFactory.address,
-    //   DOXERC20Factory.abi,
-    //   owner
-    // );
-    // console.log("token1Address: ",await tokenFactory.callStatic.createToken("BASH token", "BASH", 50000000));
+    tokenFactory = await tokenFactoryFactory.deploy();
+    console.log("tokenFactory Address: ", tokenFactory.address);
+
     var transaction = await tokenFactory.createToken(
       "BASH token",
       "BASH",
@@ -82,32 +74,6 @@ describe("ParadoxV1 contract", function () {
       token3Address
     );
 
-    // tokenFactory = await ethers.getContractFactory("DOXERC20");
-    // token1 = await tokenFactory.deploy(
-    //   "BASH token",
-    //   "BASH",
-    //   owner.address,
-    //   50000000
-    // );
-    // token2 = await tokenFactory.deploy(
-    //   "CASH token",
-    //   "CASH",
-    //   owner.address,
-    //   50000000
-    // );
-    // token3 = await tokenFactory.deploy(
-    //   "DASH token",
-    //   "DASH",
-    //   owner.address,
-    //   50000000
-    // );
-    // console.log(
-    //   "Deployed tokens: ",
-    //   token1.address,
-    //   token2.address,
-    //   token3.address
-    // );
-
     // Deploy the DOX Contract
     doxFactory = await ethers.getContractFactory("ParadoxV1");
     dox = await doxFactory.deploy();
@@ -140,24 +106,12 @@ describe("ParadoxV1 contract", function () {
         10000000
       );
       const [cpi, order] = await dox.findCPI(token1.address, token2.address);
-      console.log(
-        "cpi: ",
-        BigNumber.from(cpi.x).toString(),
-        BigNumber.from(cpi.y).toString(),
-        BigNumber.from(cpi.k).toString(),
-        order
-      );
       expect(cpi.x).to.equal(10000000);
       expect(cpi.y).to.equal(10000000);
     });
     it("Should have lower token1&2 balances due to adding liquidity", async function () {
       const bal1 = await dox.getBook(owner.address, token1.address);
       const bal2 = await dox.getBook(owner.address, token2.address);
-      console.log(
-        "post-swap balances: ",
-        BigNumber.from(bal1).toString(),
-        BigNumber.from(bal2).toString()
-      );
       expect(bal1).to.equal(10000000);
       expect(bal2).to.equal(20000000);
     });
@@ -169,24 +123,12 @@ describe("ParadoxV1 contract", function () {
         10000000
       );
       const [cpi, order] = await dox.findCPI(token2.address, token3.address);
-      console.log(
-        "cpi: ",
-        BigNumber.from(cpi.x).toString(),
-        BigNumber.from(cpi.y).toString(),
-        BigNumber.from(cpi.k).toString(),
-        order
-      );
       expect(cpi.x).to.equal(10000000);
       expect(cpi.y).to.equal(10000000);
     });
     it("Should have lower token2&3 balances due to adding liquidity", async function () {
       const bal2 = await dox.getBook(owner.address, token2.address);
       const bal3 = await dox.getBook(owner.address, token3.address);
-      console.log(
-        "post-swap balances: ",
-        BigNumber.from(bal2).toString(),
-        BigNumber.from(bal3).toString()
-      );
       expect(bal2).to.equal(10000000);
       expect(bal3).to.equal(10000000);
     });

@@ -9,8 +9,12 @@ async function main() {
   const tokenFactoryFactory = await ethers.getContractFactory(
     "DOXERC20Factory"
   );
-  const tokenFactory = await tokenFactoryFactory.deploy(deployer.address);
-  console.log("tokenFactory address:", tokenFactory.address);
+  const tokenFactory = await tokenFactoryFactory.deploy();
+  console.log("ERC20Factory address:", tokenFactory.address);
+
+  const doxFactory = await ethers.getContractFactory("ParadoxV1");
+  const dox = await doxFactory.deploy();
+  console.log("ParadoxV1 address: ", dox.address);
 
   // // Deploy the test ERC20 token
   // const tokenFactory = await ethers.getContractFactory("DOXERC20");

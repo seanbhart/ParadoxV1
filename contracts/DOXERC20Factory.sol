@@ -21,7 +21,7 @@ contract DOXERC20Factory is Ownable {
         uint tokenCount_
     );
 
-    constructor(address _feeRecipientSetter) Ownable() {}
+    constructor() Ownable() {}
 
     function tokenListLength() external view returns (uint) {
         return tokenList.length;
