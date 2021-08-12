@@ -31,7 +31,7 @@ describe("TPv1 contract", function () {
     // console.log("Created signers. Owner:", owner.address);
 
     // Deploy the test ERC20 token
-    tokenFactory = await ethers.getContractFactory("DOX_ERC20");
+    tokenFactory = await ethers.getContractFactory("DOXERC20");
     token1 = await tokenFactory.deploy("BASH token", "BASH", owner.address);
     token2 = await tokenFactory.deploy("DASH token", "DASH", owner.address);
     console.log("Deployed tokens");

@@ -6,10 +6,50 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const doxFactory = await ethers.getContractFactory("DOXv1");
-  const dox = await doxFactory.deploy();
+  const tokenFactoryFactory = await ethers.getContractFactory(
+    "DOXERC20Factory"
+  );
+  const tokenFactory = await tokenFactoryFactory.deploy(deployer.address);
+  console.log("tokenFactory address:", tokenFactory.address);
 
-  console.log("dox address:", dox.address);
+  // // Deploy the test ERC20 token
+  // const tokenFactory = await ethers.getContractFactory("DOXERC20");
+  // const token1 = await tokenFactory.deploy(
+  //   "BASH token",
+  //   "BASH",
+  //   deployer.address,
+  //   50000000
+  // );
+  // const token2 = await tokenFactory.deploy(
+  //   "CASH token",
+  //   "CASH",
+  //   deployer.address,
+  //   50000000
+  // );
+  // const token3 = await tokenFactory.deploy(
+  //   "DASH token",
+  //   "DASH",
+  //   deployer.address,
+  //   50000000
+  // );
+  // console.log(
+  //   "Deployed tokens: ",
+  //   token1.address,
+  //   token2.address,
+  //   token3.address
+  // );
+  // console.log(
+  //   "token1 supply: ",
+  //   ethers.BigNumber.from(await token1.totalSupply()).toString()
+  // );
+
+  // const doxFactory = await ethers.getContractFactory("ParadoxV1");
+  // const dox = await doxFactory.deploy(
+  //   token1.address,
+  //   token2.address,
+  //   token3.address
+  // );
+  // console.log("dox address:", dox.address);
 }
 
 main()

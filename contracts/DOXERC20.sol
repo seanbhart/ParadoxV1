@@ -33,7 +33,7 @@ import '@openzeppelin/contracts/utils/Context.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract DOX_ERC20 is Context, IERC20 { //}, IERC20Metadata {
+contract DOXERC20 is Context, IERC20 { //}, IERC20Metadata {
     mapping(address => uint256) internal _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -52,10 +52,10 @@ contract DOX_ERC20 is Context, IERC20 { //}, IERC20Metadata {
      * All two of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor(string memory name_, string memory symbol_, address owner_) {
+    function initialize(string memory name_, string memory symbol_, address owner_, uint ownerSupply_) external {
         _name = name_;
         _symbol = symbol_;
-        _balances[owner_] = 50000000;
+        _mint(owner_, ownerSupply_);
     }
 
     /**

@@ -11,18 +11,26 @@ import { Address } from "cluster";
 import { BigNumber, Bytes } from "ethers";
 import { ethers } from "hardhat";
 
-describe("DOXv1 contract", function () {
+import DOXERC20Factory from "../artifacts/contracts/DOXERC20Factory.sol/DOXERC20Factory.json";
+import DOXERC20 from "../artifacts/contracts/DOXERC20.sol/DOXERC20.json";
+
+describe("ParadoxV1 contract", function () {
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
   let addr2: SignerWithAddress;
   let addrs: SignerWithAddress[];
 
-  let tokenFactory: ContractFactory;
+  let tokenFactoryFactory: ContractFactory;
+  let tokenFactory: Contract;
   let token1: Contract;
   let token2: Contract;
   let token3: Contract;
   let doxFactory: ContractFactory;
   let dox: Contract;
+
+  let token1Address: string;
+  let token2Address: string;
+  let token3Address: string;
 
   var account2 = ethers.Wallet.createRandom();
 
@@ -31,37 +39,156 @@ describe("DOXv1 contract", function () {
     // console.log("Created signers. Owner:", owner.address);
 
     // Deploy the test ERC20 token
-    tokenFactory = await ethers.getContractFactory("DOX_ERC20");
-    token1 = await tokenFactory.deploy("BASH token", "BASH", owner.address);
-    token2 = await tokenFactory.deploy("CASH token", "CASH", owner.address);
-    token3 = await tokenFactory.deploy("DASH token", "DASH", owner.address);
+    tokenFactoryFactory = await ethers.getContractFactory("DOXERC20Factory");
+    tokenFactory = await tokenFactoryFactory.deploy(owner.address);
+    // console.log("tokenFactory: ", tokenFactory.address);
+    // const tFactory = new ethers.Contract(
+    //   tokenFactory.address,
+    //   DOXERC20Factory.abi,
+    //   owner
+    // );
+    // console.log("token1Address: ",await tokenFactory.callStatic.createToken("BASH token", "BASH", 50000000));
+    var transaction = await tokenFactory.createToken(
+      "BASH token",
+      "BASH",
+      50000000
+    );
+    await transaction.wait();
+    token1Address = await tokenFactory.getToken("BASH");
+    token1 = new ethers.Contract(token1Address, DOXERC20.abi, owner);
+
+    transaction = await tokenFactory.createToken(
+      "CASH token",
+      "CASH",
+      50000000
+    );
+    await transaction.wait();
+    token2Address = await tokenFactory.getToken("CASH");
+    token2 = new ethers.Contract(token2Address, DOXERC20.abi, owner);
+
+    transaction = await tokenFactory.createToken(
+      "DASH token",
+      "DASH",
+      50000000
+    );
+    await transaction.wait();
+    token3Address = await tokenFactory.getToken("DASH");
+    token3 = new ethers.Contract(token3Address, DOXERC20.abi, owner);
+
     console.log(
       "Deployed tokens: ",
-      token1.address,
-      token2.address,
-      token3.address
+      token1Address,
+      token2Address,
+      token3Address
     );
+
+    // tokenFactory = await ethers.getContractFactory("DOXERC20");
+    // token1 = await tokenFactory.deploy(
+    //   "BASH token",
+    //   "BASH",
+    //   owner.address,
+    //   50000000
+    // );
+    // token2 = await tokenFactory.deploy(
+    //   "CASH token",
+    //   "CASH",
+    //   owner.address,
+    //   50000000
+    // );
+    // token3 = await tokenFactory.deploy(
+    //   "DASH token",
+    //   "DASH",
+    //   owner.address,
+    //   50000000
+    // );
+    // console.log(
+    //   "Deployed tokens: ",
+    //   token1.address,
+    //   token2.address,
+    //   token3.address
+    // );
 
     // Deploy the DOX Contract
-    doxFactory = await ethers.getContractFactory("DOXv1");
-    dox = await doxFactory.deploy(
-      token1.address,
-      token2.address,
-      token3.address
-    );
-    console.log("Deployed DOX");
+    doxFactory = await ethers.getContractFactory("ParadoxV1");
+    dox = await doxFactory.deploy();
+    console.log("Deployed ParadoxV1: ", dox.address);
 
     // Approve and transfer 100 from ERC20 to DOX contract
-    await token1.approve(dox.address, 1000000);
-    await dox.deposit(token1.address, 1000000);
+    await token1.approve(dox.address, 20000000);
+    await dox.deposit(token1.address, 20000000);
+    await token2.approve(dox.address, 30000000);
+    await dox.deposit(token2.address, 30000000);
+    await token3.approve(dox.address, 20000000);
+    await dox.deposit(token3.address, 20000000);
     console.log(
-      "Deployed DOX contract and deposited initial 100 to owner on token1"
+      "Deployed ParadoxV1 contract and deposited initial 100 to owner on token1"
     );
   });
 
   describe("Deployment", function () {
     it("Should have set the right owner", async function () {
       expect(await dox.owner()).to.equal(owner.address);
+    });
+  });
+
+  describe("AddLiquidity", async function () {
+    it("Should have added liquidity to the token1-token2 pair", async function () {
+      await dox.addLiquidity(
+        token1.address,
+        token2.address,
+        10000000,
+        10000000
+      );
+      const [cpi, order] = await dox.findCPI(token1.address, token2.address);
+      console.log(
+        "cpi: ",
+        BigNumber.from(cpi.x).toString(),
+        BigNumber.from(cpi.y).toString(),
+        BigNumber.from(cpi.k).toString(),
+        order
+      );
+      expect(cpi.x).to.equal(10000000);
+      expect(cpi.y).to.equal(10000000);
+    });
+    it("Should have lower token1&2 balances due to adding liquidity", async function () {
+      const bal1 = await dox.getBook(owner.address, token1.address);
+      const bal2 = await dox.getBook(owner.address, token2.address);
+      console.log(
+        "post-swap balances: ",
+        BigNumber.from(bal1).toString(),
+        BigNumber.from(bal2).toString()
+      );
+      expect(bal1).to.equal(10000000);
+      expect(bal2).to.equal(20000000);
+    });
+    it("Should have added liquidity to the token2-token3 pair", async function () {
+      await dox.addLiquidity(
+        token2.address,
+        token3.address,
+        10000000,
+        10000000
+      );
+      const [cpi, order] = await dox.findCPI(token2.address, token3.address);
+      console.log(
+        "cpi: ",
+        BigNumber.from(cpi.x).toString(),
+        BigNumber.from(cpi.y).toString(),
+        BigNumber.from(cpi.k).toString(),
+        order
+      );
+      expect(cpi.x).to.equal(10000000);
+      expect(cpi.y).to.equal(10000000);
+    });
+    it("Should have lower token2&3 balances due to adding liquidity", async function () {
+      const bal2 = await dox.getBook(owner.address, token2.address);
+      const bal3 = await dox.getBook(owner.address, token3.address);
+      console.log(
+        "post-swap balances: ",
+        BigNumber.from(bal2).toString(),
+        BigNumber.from(bal3).toString()
+      );
+      expect(bal2).to.equal(10000000);
+      expect(bal3).to.equal(10000000);
     });
   });
 
@@ -88,13 +215,13 @@ describe("DOXv1 contract", function () {
   // });
 
   describe("Swap", async function () {
-    var token1bal = 1000000;
-    var token2bal = 1000000;
+    var token1bal = 10000000;
+    var token2bal = 10000000;
     let k = token1bal * token2bal;
 
-    var bal1last = 1000000;
-    var bal2last = 0;
-    let swapAmt = 100000;
+    var bal1last = 10000000;
+    var bal2last = 10000000;
+    let swapAmt = 100;
 
     for (let i = 0; i < 7; i++) {
       it("Should have swapped token1 for token2", async function () {
@@ -115,7 +242,7 @@ describe("DOXv1 contract", function () {
           "token2 px last, current, slippage: ",
           token2LastPx.toFixed(2),
           token2Px.toFixed(2),
-          ((token2Px - token2LastPx) / token2LastPx).toFixed(2) + "%"
+          ((token2Px - token2LastPx) / token2LastPx).toFixed(4) + "%"
         );
 
         const bal1 = await dox.getBook(owner.address, token1.address);
@@ -126,14 +253,15 @@ describe("DOXv1 contract", function () {
           BigNumber.from(bal2).toString()
         );
 
+        bal1last = bal1last - swapAmt;
+        bal2last = bal2last + token2baldiff;
+
         console.log(
           "last balances: ",
           bal1last.toFixed(2),
           bal2last.toFixed(2)
         );
-        bal1last = bal1last - swapAmt;
         expect(Math.ceil(bal1)).to.equal(Math.ceil(bal1last));
-        bal2last = bal2last + token2baldiff;
         expect(Math.ceil(bal2)).to.equal(Math.ceil(bal2last));
       });
     }

@@ -41,7 +41,7 @@ describe("DOXv1 contract", function () {
     console.log("owner address: ", owner.address);
 
     // Deploy the test ERC20 token
-    tokenFactory = await ethers.getContractFactory("DOX_ERC20");
+    tokenFactory = await ethers.getContractFactory("DOXERC20");
     token1 = await tokenFactory.deploy("BASH token", "BASH", owner.address);
     token2 = await tokenFactory.deploy("CASH token", "CASH", owner.address);
     token3 = await tokenFactory.deploy("DASH token", "DASH", owner.address);
