@@ -106,8 +106,8 @@ describe("ParadoxV1 contract", function () {
         10000000
       );
       const [cpi, order] = await dox.findCPI(token1.address, token2.address);
-      expect(cpi.x).to.equal(10000000);
-      expect(cpi.y).to.equal(10000000);
+      expect(cpi.a).to.equal(10000000);
+      expect(cpi.b).to.equal(10000000);
     });
     it("Should have lower token1&2 balances due to adding liquidity", async function () {
       const bal1 = await dox.getBook(owner.address, token1.address);
@@ -123,8 +123,8 @@ describe("ParadoxV1 contract", function () {
         10000000
       );
       const [cpi, order] = await dox.findCPI(token2.address, token3.address);
-      expect(cpi.x).to.equal(10000000);
-      expect(cpi.y).to.equal(10000000);
+      expect(cpi.a).to.equal(10000000);
+      expect(cpi.b).to.equal(10000000);
     });
     it("Should have lower token2&3 balances due to adding liquidity", async function () {
       const bal2 = await dox.getBook(owner.address, token2.address);
@@ -163,11 +163,11 @@ describe("ParadoxV1 contract", function () {
 
     var bal1last = 10000000;
     var bal2last = 10000000;
-    let swapAmt = 100;
+    let swapAmt = 10000;
 
     for (let i = 0; i < 7; i++) {
       it("Should have swapped token1 for token2", async function () {
-        await dox.swap(owner.address, token1.address, token2.address, swapAmt);
+        await dox.swap(token1.address, token2.address, swapAmt);
 
         let token2LastPx = token2bal / token1bal;
         token1bal = token1bal + swapAmt;
@@ -182,8 +182,8 @@ describe("ParadoxV1 contract", function () {
         let token2Px = token2bal / token1bal;
         console.log(
           "token2 px last, current, slippage: ",
-          token2LastPx.toFixed(2),
-          token2Px.toFixed(2),
+          token2LastPx.toFixed(4),
+          token2Px.toFixed(4),
           ((token2Px - token2LastPx) / token2LastPx).toFixed(4) + "%"
         );
 

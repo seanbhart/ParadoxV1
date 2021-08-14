@@ -15,9 +15,12 @@ struct Offer {
     uint amount;
 }
 
+// x * y = k; a * b = k
+// a,b represent token pool amounts, so x,y are not used
+// as representations, since which is x or y changes in the equation.
 struct CPI {
-    uint x;
-    uint y;
+    uint a;
+    uint b;
     uint k;
 }
 
@@ -91,33 +94,34 @@ contract ParadoxV1 is Ownable {
         uint _token0input,
         uint _token1input
     ) public virtual lock {
-        require(_token0 != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_token1 != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_token0input > 0, 'ParadoxV1: INVALID LIQUIDITY AMOUNT');
-        require(_token1input > 0, 'ParadoxV1: INVALID LIQUIDITY AMOUNT');
+        require(_token0 != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_token1 != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_token0input > 0, 'ParadoxV1: INVALID_LIQUIDITY_AMOUNT');
+        require(_token1input > 0, 'ParadoxV1: INVALID_LIQUIDITY_AMOUNT');
 
         // Liquidity must come from book balances. Ensure the account
         // has enough book balances to cover the liquidity.
-        require(getBook[msg.sender][_token0] >= _token0input, 'ParadoxV1: INSUFFICIENT BOOK BALANCE');
-        require(getBook[msg.sender][_token1] >= _token1input, 'ParadoxV1: INSUFFICIENT BOOK BALANCE');
+        require(getBook[msg.sender][_token0] >= _token0input, 'ParadoxV1: INSUFFICIENT_BOOK_BALANCE');
+        require(getBook[msg.sender][_token1] >= _token1input, 'ParadoxV1: INSUFFICIENT_BOOK_BALANCE');
 
         // Reduce the book balance
         getBook[msg.sender][_token0] = getBook[msg.sender][_token0] - _token0input;
         getBook[msg.sender][_token1] = getBook[msg.sender][_token1] - _token1input;
 
         // Update the CPI amounts
-        (CPI memory tempCPI, bool token0First) = _safeGetCPI(_token0, _token1);
+        (CPI memory tempCPI, bool aIsToken0) = _safeGetCPI(_token0, _token1);
         // require(tempCPI.k != 0, 'ParadoxV1: TOKEN PAIR NOT FOUND');
         if (tempCPI.k == 0) {
-            tempCPI.x = _token0input;
-            tempCPI.y = _token1input;
+            tempCPI.a = aIsToken0 ? _token0input : _token1input;
+            tempCPI.b = aIsToken0 ? _token1input : _token0input;
             tempCPI.k = _token0input * _token1input;
         } else {
-            uint x = token0First ? tempCPI.x : tempCPI.y;
-            uint y = token0First ? tempCPI.y : tempCPI.x;
-            tempCPI.x = x.add(_token0input);
-            tempCPI.y = y.add(_token1input);
-            tempCPI.k = x * y;
+            // Update the stored CPI
+            uint a = aIsToken0 ? tempCPI.a.add(_token0input) : tempCPI.a.add(_token1input);
+            uint b = aIsToken0 ? tempCPI.b.add(_token1input) : tempCPI.b.add(_token0input);
+            tempCPI.a = a;
+            tempCPI.b = b;
+            tempCPI.k = a * b;
         }
 
         // TODO: Add contribution amt to CPI
@@ -126,60 +130,73 @@ contract ParadoxV1 is Ownable {
     }
 
     function swap(
-        address _account,
         address _token0,
         address _token1,
-        // address _token2,
         uint _give
     ) public virtual lock {
         // uint g0 = gasleft(); // GAS CALC
-        require(_token0 != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_token1 != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_give > 0, 'ParadoxV1: INVALID SWAP AMOUNT');
+        require(_token0 != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_token1 != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_give > 0, 'ParadoxV1: INVALID_SWAP_AMOUNT');
 
-        uint output12 = _swap(_account, _token0, _token1, _give);
-        // uint output23 = _swap(_account, _token1, _token2, output12);
+        uint output12 = _swap(_token0, _token1, _give);
 
-        emit Swap(_account, _token0, _token1, _give, output12);
+        emit Swap(msg.sender, _token0, _token1, _give, output12);
         // uint g1 = gasleft(); // GAS CALC
         // console.log("GAS: ParadoxV1: SWAP - SWAP:", g0 - g1); // GAS CALC
     }
 
     function _swap(
-        address _account,
         address _tokenHave,
         address _tokenWant,
         uint _give
     ) private returns (uint output) {
-        require(_tokenHave != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_tokenWant != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_give > 0, 'ParadoxV1: INVALID SWAP AMOUNT');
+        CPI memory swapCPI;
+        bool aIsHave;
+        (swapCPI, aIsHave, output) = swapCalc(_tokenHave, _tokenWant, _give);
+        // console.log("swap output: ", output);
+        // uint oldPx = swapCPI.a.mul(1000).div(swapCPI.b);
+
+        // Update the stored CPI
+        swapCPI.a = aIsHave ? swapCPI.a.add(_give) : swapCPI.a.sub(output);
+        swapCPI.b = aIsHave ? swapCPI.b.sub(output) : swapCPI.b.add(_give);
+        // console.log("NEW swapCPI: ", swapCPI.a, swapCPI.b, swapCPI.k);
+        // console.log("OLD y price (in x thousandths): ", oldPx);
+        // console.log("NEW y price (in x thousandths): ", swapCPI.a.mul(1000).div(swapCPI.b));
+        // console.log("y price slippage (in x thousandths): ", swapCPI.a.mul(1000).div(swapCPI.b) - oldPx);
+        _safeSaveCPI(_tokenHave, _tokenWant, swapCPI);
+
+        // Adjust the account's balances
+        _safeUpdateBook(msg.sender, _tokenHave, 0, _give);
+        _safeUpdateBook(msg.sender, _tokenWant, output, 0);
+    }
+
+    function swapCalc(
+        address _tokenHave,
+        address _tokenWant,
+        uint _give
+    ) public view returns (CPI memory swapCPI, bool aIsHave, uint output) {
+        require(_tokenHave != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_tokenWant != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_give > 0, 'ParadoxV1: INVALID_SWAP_AMOUNT');
 
         // Get the token pair Constant Product Invariant data (and liquidity amounts)
-        (CPI memory swapCPI, bool tokenHaveFirst) = _safeGetCPI(_tokenHave, _tokenWant);
-        require(swapCPI.k != 0, 'ParadoxV1: TOKEN PAIR NOT FOUND');
+        // x * y = k; a * b = k; b - (k / (a + _give));
+
+        // CPI data is stored with the lower-value-address token as "a" and the other as "b"
+        (swapCPI, aIsHave) = _safeGetCPI(_tokenHave, _tokenWant);
+        require(swapCPI.k != 0, 'ParadoxV1: TOKEN_PAIR_NOT_FOUND');
 
         // Calculate the amount of wanted token to return
         // Invariant / (tokenHave + give) = tokenWant new LP amount
         // tokenWant current - tokenWant new LP amount = tokenWant return amount
-        uint x = tokenHaveFirst ? swapCPI.x : swapCPI.y;
-        uint y = tokenHaveFirst ? swapCPI.y : swapCPI.x;
-        // y - (k / (x + _give));
-        output = y.sub(swapCPI.k.div(x.add(_give)));
-        // console.log("swap output: ", output);
 
-        // Update the stored CPI
-        swapCPI.x = x.add(_give);
-        swapCPI.y = y.sub(output);
-        // console.log("swapCPI: ", swapCPI.x, swapCPI.y, swapCPI.k);
-        // console.log("old y price (in x thousandths): ", x.mul(1000).div(y));
-        // console.log("y price (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y));
-        // console.log("y price slippage (in x thousandths): ", swapCPI.x.mul(1000).div(swapCPI.y) - x.mul(1000).div(y));
-        _safeSaveCPI(_tokenHave, _tokenWant, swapCPI);
-
-        // Adjust the account's balances
-        _safeUpdateBook(_account, _tokenHave, 0, _give);
-        _safeUpdateBook(_account, _tokenWant, output, 0);
+        // x * y = k; y - (k / (x + _give));
+        // want_output = pool_want_start - (k / (pool_have_start + have_give));
+        // uint poolHave = aIsHave ? swapCPI.a : swapCPI.b;
+        // uint poolWant = aIsHave ? swapCPI.b : swapCPI.a;
+        // output = poolWant.sub(swapCPI.k.div(poolHave.add(_give)));
+        output = aIsHave ? swapCPI.b.sub(swapCPI.k.div(swapCPI.a.add(_give))) : swapCPI.a.sub(swapCPI.k.div(swapCPI.b.add(_give)));
     }
 
     /* BOOK FUNCTIONS
@@ -188,12 +205,14 @@ contract ParadoxV1 is Ownable {
         address _token,
         uint _amount
     ) public virtual lock {
-        require(_token != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
-        require(_amount > 0, 'ParadoxV1: INVALID DEPOSIT AMOUNT');
+        require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_amount > 0, 'ParadoxV1: INVALID_DEPOSIT_AMOUNT');
 
-        uint currentBalance = 0;
+        uint currentBalance;
         if (getBook[msg.sender][_token] > 0) {
             currentBalance = getBook[msg.sender][_token];
+        } else {
+            currentBalance = 0;
         }
 
         // Transfer amount from sender to contract for referenced token
@@ -209,11 +228,11 @@ contract ParadoxV1 is Ownable {
         address _token,
         uint _amount
     ) public virtual lock {
-        require(_token != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
+        require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         
         // Check available Book Balance
         uint bookBalance = getBook[msg.sender][_token];
-        require(bookBalance >= _amount, 'ParadoxV1: INSUFFICIENT BOOK BALANCE');
+        require(bookBalance >= _amount, 'ParadoxV1: INSUFFICIENT_BOOK_BALANCE');
         
         // Transfer amount from contract to sender for referenced token
         IERC20 toToken = IERC20(_token);
@@ -229,7 +248,7 @@ contract ParadoxV1 is Ownable {
         address _to,
         uint _amount
     ) public virtual lock {
-        require(_token != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
+        require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         
         _safeTransfer(_token, msg.sender, _to, _amount);
         emit Transfer(_token, msg.sender, _to, _amount);
@@ -253,14 +272,14 @@ contract ParadoxV1 is Ownable {
         address _token,
         uint _amount
     ) public virtual lock {
-        require(_token != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
+        require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         
         // Check ownership
         require(getTpOwner[_symbol] == msg.sender, 'ParadoxV1: UNAUTHORIZED');
 
         // Check available Book Balance
         uint bookBalance = getBook[msg.sender][_token];
-        require(bookBalance >= _amount, 'ParadoxV1: INSUFFICIENT BOOK BALANCE');
+        require(bookBalance >= _amount, 'ParadoxV1: INSUFFICIENT_BOOK_BALANCE');
 
         // Transfer Book Balance to TP Balance
         getBook[msg.sender][_token] = getBook[msg.sender][_token].sub(_amount);
@@ -288,14 +307,14 @@ contract ParadoxV1 is Ownable {
         address _token,
         uint _amount
     ) public virtual lock {
-        require(_token != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
+        require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         
         // Check ownership
         require(getTpOwner[_symbol] == msg.sender, 'ParadoxV1: UNAUTHORIZED');
 
         // Check available TP Balance
         uint tpBalance = getTp[_symbol][_token];
-        require(tpBalance >= _amount, 'ParadoxV1: INSUFFICIENT TP BALANCE');
+        require(tpBalance >= _amount, 'ParadoxV1: INSUFFICIENT_TP_BALANCE');
 
         // Transfer Book Balance to TP Balance
         getTp[_symbol][_token] = getTp[_symbol][_token].sub(_amount);
@@ -308,7 +327,7 @@ contract ParadoxV1 is Ownable {
         string memory _symbol,
         address _to
     ) public virtual lock {
-        require(_to != address(0), 'ParadoxV1: INVALID TOKEN ADDRESS');
+        require(_to != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         
         // Check ownership
         require(getTpOwner[_symbol] == msg.sender, 'ParadoxV1: UNAUTHORIZED');
@@ -345,22 +364,22 @@ contract ParadoxV1 is Ownable {
         uint _amount
     ) private {
         // Ensure the from address has enough balance for the transfer
-        require(getBook[_from][_token] >= _amount, 'ParadoxV1: INSUFFICIENT FUNDS');
+        require(getBook[_from][_token] >= _amount, 'ParadoxV1: INSUFFICIENT_FUNDS');
         getBook[_from][_token] = getBook[_from][_token].sub(_amount);
         getBook[_to][_token] = getBook[_to][_token].add(_amount);
     }
 
     function _safeUpdateBook(address _account, address _token, uint add, uint subtract) private {
-        require(_account != address(0) && _token != address(0), 'ParadoxV1: AN ADDRESS IS INVALID');
+        require(_account != address(0) && _token != address(0), 'ParadoxV1: INVALID_ADDRESS');
         // require(add > 0 && subtract > 0, 'ParadoxV1: INVALID ADJUSTMENT AMOUNT');
         uint currentBal = getBook[_account][_token];
-        console.log("_safeUpdateBook: ", currentBal, add, subtract);
+        console.log("_safeUpdateBook (current, add, subtract): ", currentBal, add, subtract);
         getBook[_account][_token] = currentBal.add(add).sub(subtract);
     }
 
     // Will find CPI (if exists) regardless of the order of addresses passed
     function _safeGetCPI(address _token0, address _token1) private view returns (CPI memory gotCPI, bool inputOrder) {
-        require(_token0 != address(0) && _token1 != address(0), 'ParadoxV1: A TOKEN ADDRESS IS INVALID');
+        require(_token0 != address(0) && _token1 != address(0), 'ParadoxV1: INVALID_ADDRESS');
         address tokenA = _token0 < _token1 ? _token0 : _token1;
         address tokenB = _token0 < _token1 ? _token1 : _token0;
         inputOrder = tokenA == _token0 ? true : false;
@@ -368,7 +387,7 @@ contract ParadoxV1 is Ownable {
     }
     // Will save CPI correctly regardless of the order of addresses passed
     function _safeSaveCPI(address _token0, address _token1, CPI memory newCPI) private {
-        require(_token0 != address(0) && _token1 != address(0), 'ParadoxV1: A TOKEN ADDRESS IS INVALID');
+        require(_token0 != address(0) && _token1 != address(0), 'ParadoxV1: INVALID_ADDRESS');
         require(newCPI.k != 0, 'ParadoxV1: INVALID CPI DATA');
         address tokenA = _token0 < _token1 ? _token0 : _token1;
         address tokenB = _token0 < _token1 ? _token1 : _token0;
