@@ -42,6 +42,9 @@ contract ParadoxV1 is Ownable {
     */
     // account address => token address => balance amount
     mapping(address => mapping(address => uint)) public getBook;
+    address[] public getAccount; //TODO: transfer to backend? Adds gas costs.
+    mapping(address => address[]) public getBookList; //TODO: transfer to backend? Adds gas costs.
+    mapping(address => uint) public getBookListLength; //TODO: transfer to backend? Adds gas costs.
 
     /* TOKEN POOLS
     */
@@ -201,12 +204,20 @@ contract ParadoxV1 is Ownable {
 
     /* BOOK FUNCTIONS
     */
+    function accountListLength() external view returns (uint) {
+        return getAccount.length;
+    }
+
+    // The account should have already approved a sufficient amount for transfer.
     function deposit(
         address _token,
         uint _amount
     ) public virtual lock {
         require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
         require(_amount > 0, 'ParadoxV1: INVALID_DEPOSIT_AMOUNT');
+
+        IERC20 fromToken = IERC20(_token);
+        require(fromToken.balanceOf(msg.sender) > _amount, 'ParadoxV1: INSUFFICIENT_TOKEN_BALANCE');
 
         uint currentBalance;
         if (getBook[msg.sender][_token] > 0) {
@@ -215,12 +226,31 @@ contract ParadoxV1 is Ownable {
             currentBalance = 0;
         }
 
+        // Ensure the token is listed for this user
+        address[] memory aList = getBookList[msg.sender];
+        uint aListLength = aList.length;
+        bool exists = false;
+        for (uint i=0; i<aListLength; i++) {
+            if (aList[i] == _token) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            getBookList[msg.sender].push(_token);
+            getBookListLength[msg.sender] = getBookListLength[msg.sender] + 1;
+        }
+
         // Transfer amount from sender to contract for referenced token
-        IERC20 fromToken = IERC20(_token);
         fromToken.transferFrom(msg.sender, address(this), _amount);
 
         // Increase the internal book balance to account for transfer
         getBook[msg.sender][_token] = currentBalance.add(_amount);
+
+        // Add the account to the address list if it does not yet exist
+        if (!_findAccount(msg.sender)) {
+            getAccount.push(msg.sender);
+        }
         emit Deposit(msg.sender, _token, _amount);
     }
 
@@ -229,6 +259,7 @@ contract ParadoxV1 is Ownable {
         uint _amount
     ) public virtual lock {
         require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_amount > 0, 'ParadoxV1: INVALID_WITHDRAW_AMOUNT');
         
         // Check available Book Balance
         uint bookBalance = getBook[msg.sender][_token];
@@ -249,9 +280,22 @@ contract ParadoxV1 is Ownable {
         uint _amount
     ) public virtual lock {
         require(_token != address(0), 'ParadoxV1: INVALID_TOKEN_ADDRESS');
+        require(_to != address(0), 'ParadoxV1: INVALID_ACCOUNT_ADDRESS');
+        require(_amount > 0, 'ParadoxV1: INVALID_TRANSFER_AMOUNT');
         
         _safeTransfer(_token, msg.sender, _to, _amount);
         emit Transfer(_token, msg.sender, _to, _amount);
+    }
+
+    function _findAccount(address account) private view returns (bool exists) {
+        exists = false;
+        uint alLength = getAccount.length;
+        for (uint i=0; i<alLength; i++) {
+            if (getAccount[i] == account) {
+                exists = true;
+                break;
+            }
+        }
     }
 
     /* TP FUNCTIONS

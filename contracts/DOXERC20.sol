@@ -43,6 +43,8 @@ contract DOXERC20 is Context, IERC20 { //}, IERC20Metadata {
     string private _name;
     string private _symbol;
 
+    mapping(address => bool) public usedFaucet;
+
     /**
      * @dev Sets the values for {name} and {symbol}.
      *
@@ -56,6 +58,13 @@ contract DOXERC20 is Context, IERC20 { //}, IERC20Metadata {
         _name = name_;
         _symbol = symbol_;
         _mint(owner_, ownerSupply_);
+    }
+
+    function faucet() public virtual returns (bool) {
+        require(!usedFaucet[msg.sender], "DOXERC20: you already used the faucet");
+        _mint(msg.sender, 100000000000000000000000); // 1M tokens
+        usedFaucet[msg.sender] = true;
+        return true;
     }
 
     /**
