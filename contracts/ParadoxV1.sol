@@ -217,7 +217,7 @@ contract ParadoxV1 is Ownable {
         require(_amount > 0, 'ParadoxV1: INVALID_DEPOSIT_AMOUNT');
 
         IERC20 fromToken = IERC20(_token);
-        require(fromToken.balanceOf(msg.sender) > _amount, 'ParadoxV1: INSUFFICIENT_TOKEN_BALANCE');
+        require(fromToken.balanceOf(msg.sender) >= _amount, 'ParadoxV1: INSUFFICIENT_TOKEN_BALANCE');
 
         uint currentBalance;
         if (getBook[msg.sender][_token] > 0) {
