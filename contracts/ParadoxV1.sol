@@ -284,6 +284,22 @@ contract ParadoxV1 is Ownable {
         require(_amount > 0, 'ParadoxV1: INVALID_TRANSFER_AMOUNT');
         
         _safeTransfer(_token, msg.sender, _to, _amount);
+
+        // Ensure the token is listed for this user
+        address[] memory aList = getBookList[_to];
+        uint aListLength = aList.length;
+        bool exists = false;
+        for (uint i=0; i<aListLength; i++) {
+            if (aList[i] == _token) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            getBookList[_to].push(_token);
+            getBookListLength[_to] = getBookListLength[_to] + 1;
+        }
+
         emit Transfer(_token, msg.sender, _to, _amount);
     }
 
