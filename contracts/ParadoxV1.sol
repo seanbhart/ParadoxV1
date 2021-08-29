@@ -45,6 +45,7 @@ contract ParadoxV1 is Ownable {
     address[] public getAccount; //TODO: transfer to backend? Adds gas costs.
     mapping(address => address[]) public getBookList; //TODO: transfer to backend? Adds gas costs.
     mapping(address => uint) public getBookListLength; //TODO: transfer to backend? Adds gas costs.
+    // TODO: Add token list storage? Currently using TokenFactory for frontend lookup.
 
     /* TOKEN POOLS
     */

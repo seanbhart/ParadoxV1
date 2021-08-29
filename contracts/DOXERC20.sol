@@ -62,7 +62,7 @@ contract DOXERC20 is Context, IERC20 { //}, IERC20Metadata {
 
     function faucet() public virtual returns (bool) {
         require(!usedFaucet[msg.sender], "DOXERC20: you already used the faucet");
-        _mint(msg.sender, 100000000000000000000000); // 1M tokens
+        _mint(msg.sender, 100000000000000000000000); // 100k tokens
         usedFaucet[msg.sender] = true;
         return true;
     }

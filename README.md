@@ -97,4 +97,7 @@ Other commands:
 hh
 hh compile
 hh test
+hh test test/ParadoxV1.test.ts
+hh run scripts/deploy.ts --network local
+hh run scripts/deploy.ts --network kovan
 ```
