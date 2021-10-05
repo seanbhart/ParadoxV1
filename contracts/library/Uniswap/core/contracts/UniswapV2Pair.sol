@@ -8,7 +8,7 @@ import './interfaces/IERC20.sol';
 import './interfaces/IUniswapV2Factory.sol';
 import './interfaces/IUniswapV2Callee.sol';
 
-// import 'hardhat/console.sol';
+import 'hardhat/console.sol';
 
 contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     using SafeMath  for uint;
@@ -205,6 +205,13 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         // uint g1 = gasleft(); // GAS CALC
         // console.log("GAS: V2 PAIR: SWAP - CPAMM MATH:", g0 - g1); // GAS CALC
         }
+
+        // {
+        // for(uint i=0; i<200; i++){
+        //     balanceOf[providers[i]] = balanceOf[providers[i]] + 1;
+        //     // console.log("PROVIDER: ", providers[i]);
+        // }
+        // }
 
         _update(balance0, balance1, _reserve0, _reserve1);
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);

@@ -11,7 +11,7 @@ import { Address } from "cluster";
 import { BigNumber, Bytes } from "ethers";
 import { ethers } from "hardhat";
 
-describe("DOXv1 contract", function () {
+describe("Uni setup", function () {
   let owner: SignerWithAddress;
   let addr1: SignerWithAddress;
   let addr2: SignerWithAddress;
@@ -42,9 +42,24 @@ describe("DOXv1 contract", function () {
 
     // Deploy the test ERC20 token
     tokenFactory = await ethers.getContractFactory("DOXERC20");
-    token1 = await tokenFactory.deploy("BASH token", "BASH", owner.address);
-    token2 = await tokenFactory.deploy("CASH token", "CASH", owner.address);
-    token3 = await tokenFactory.deploy("DASH token", "DASH", owner.address);
+    token1 = await tokenFactory.deploy(
+      "BASH token",
+      "BASH",
+      owner.address,
+      50000000
+    );
+    token2 = await tokenFactory.deploy(
+      "CASH token",
+      "CASH",
+      owner.address,
+      50000000
+    );
+    token3 = await tokenFactory.deploy(
+      "DASH token",
+      "DASH",
+      owner.address,
+      50000000
+    );
     console.log(
       "Deployed tokens: ",
       token1.address,

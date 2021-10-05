@@ -1,4 +1,24 @@
-# DOXv1
+# ParadoxV1
+
+Paradox is a DeFi protocol proposal that takes DeFi features that are separated on existing Layer 1 blockchains and combines them into a single contract (what we will call "Layer 0"). For example, rather than store token balances in specific token contracts separate from a DEX pool contract, Paradox stores all token and AMM balances in a single contract, allowing for very cheap transfers of value between accounts since only hash tables are being updated in a single contract.
+
+NOTE: This proposal draft does not include more advanced features like flash loans, Curve or Balancer-style AMM formulas, complex fees, or other key composability features. Solutions to these needs for this "Layer 0" environment would need to be added to compete with modern DeFi protocol competitors.
+
+We can see the areas of gas savings when comparing gas utilization of each step in a swap process.
+
+![Paradox vs. UniswapV2 Gas Utilization](./readme_files/paradox_vs_uniswap.png)
+
+## Gas Fees
+
+Standard UniswapV2 swaps consume ~130k gas.
+
+![UniswapV2 Swap Gas](./readme_files/uniswap_gas.png)
+
+Paradox swaps are over 50% cheaper at ~60k gas.
+
+![Paradox Swap Gas](./readme_files/paradox_gas.png)
+
+## Notes
 
 - Internal Balances
   - Deposit

@@ -2,6 +2,7 @@ pragma solidity >=0.5.0;
 
 // import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
+// import '../../../core/contracts/interfaces/IUniswapV2Pair.sol';
 
 import "./SafeMath.sol";
 // import 'hardhat/console.sol';
@@ -26,8 +27,8 @@ library UniswapV2Library {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                // hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-                hex'167beb2b12c1e5d4153f45fd6d193e72fad545a7ea10bd37b896ee80921de18c' // init code hash
+                // hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // Factory init code hash
+                hex'5be7eed1a838bdc17090cb05057d4b7055835e1269609ebcdabdc8e895050d34' // Factory init code hash
             ))));
         // uint g2 = gasleft(); // GAS CALC
         // console.log("GAS: LIBRARY: PAIR FOR - PAIR ADDRESS:", g1 - g2); // GAS CALC
